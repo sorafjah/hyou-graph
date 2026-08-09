@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ひょうから グラフ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --color-bg: #F7F5F0;
+    --color-panel: #FFFFFF;
+    --color-ink: #2E2A25;
+    --color-sub: #7A756C;
+    --color-line: #E4E0D6;
+    --color-accent: #3E7C6B;
+    --color-accent-soft: #DCEBE5;
+    --color-warn: #C9793A;
+    --color-warn-soft: #F7E7D8;
+    --radius: 16px;
+    --touch: 48px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin:0; padding:0;
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: 'BIZ UDPGothic', sans-serif;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    overscroll-behavior: none;
+  }
+  input, button { font-family: inherit; }
+  input { -webkit-user-select: text; user-select: text; }
+  ruby rt { font-size: 0.55em; color: var(--color-sub); }
+
+  #app {
+    display:flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* ---------- ヘッダー ---------- */
+  header {
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--color-panel);
+    border-bottom: 1px solid var(--color-line);
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: clamp(16px, 3vw, 20px);
+    margin: 0;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .icon-btn {
+    width: var(--touch); height: var(--touch);
+    min-width: var(--touch); min-height: var(--touch);
+    border-radius: 12px;
+    border: 1px solid var(--color-line);
+    background: var(--color-panel);
+    font-size: 22px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .icon-btn:active { background: var(--color-accent-soft); }
+
+  .header-right { display:flex; gap:8px; }
+
+  /* ---------- メインレイアウト ---------- */
+  main {
+    flex:1;
+    display:flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+  }
+  .panel {
+    background: var(--color-panel);
+    border-radius: var(--radius);
+    border: 1px solid var(--color-line);
+    padding: 16px;
+  }
+  #graph-row {
+    display:flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: stretch;
+  }
+  #graph-panel { flex: 1.4 1 420px; min-width: 300px; display:flex; flex-direction:column; }
+  #controls-panel { flex: 1 1 260px; min-width: 240px; }
+
+  .panel-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--color-sub);
+    margin: 0 0 10px 0;
+    letter-spacing: 0.02em;
+  }
+
+  /* ---------- プリセット ---------- */
+  #preset-row {
+    display:flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .preset-btn {
+    flex: 1 1 130px;
+    min-height: var(--touch);
+    border-radius: 12px;
+    border: 1px solid var(--color-line);
+    background: #FCFBF8;
+    font-size: 13px;
+    color: var(--color-ink);
+    cursor: pointer;
+    padding: 8px 10px;
+    text-align: left;
+    line-height: 1.4;
+  }
+  .preset-btn:active { background: var(--color-accent-soft); }
+  .preset-btn .preset-name { font-weight: 700; display:block; }
+  .preset-btn .preset-desc { font-size: 11px; color: var(--color-sub); }
+
+  /* ---------- タイトル・単位 入力 ---------- */
+  .meta-row {
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 14px 0;
+  }
+  .meta-field { flex: 1 1 160px; }
+  .meta-field label {
+    display:block;
+    font-size: 12px;
+    color: var(--color-sub);
+    margin-bottom: 4px;
+  }
+  .meta-field input {
+    width: 100%;
+    height: var(--touch);
+    border-radius: 10px;
+    border: 1px solid var(--color-line);
+    padding: 0 12px;
+    font-size: 16px;
+    color: var(--color-ink);
+    background: #FCFBF8;
+  }
+  .meta-field input:focus { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+
+  /* ---------- 本物のtable ---------- */
+  #table-scroll {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--color-line);
+    -webkit-overflow-scrolling: touch;
+  }
+  table#data-table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 100%;
+  }
+  table#data-table th, table#data-table td {
+    border: 1px solid var(--color-line);
+    padding: 0;
+    min-width: 92px;
+  }
+  table#data-table thead th.corner-cell {
+    background: #FCFBF8;
+    min-width: 76px;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+  }
+  table#data-table tbody th.row-head-cell {
+    background: #FCFBF8;
+    font-size: 13px;
+    color: var(--color-sub);
+    font-weight: 700;
+    text-align: center;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    padding: 4px;
+  }
+  .label-cell {
+    padding: 4px !important;
+    background: #FCFBF8;
+  }
+  .label-cell-inner {
+    display:flex;
+    flex-direction: column;
+    align-items:center;
+    gap: 4px;
+  }
+  .color-chip {
+    width: 100%;
+    height: 5px;
+    border-radius: 3px;
+  }
+  .label-input {
+    width: 100%;
+    min-width: 80px;
+    height: 38px;
+    text-align:center;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 14px;
+    background: transparent;
+    color: var(--color-ink);
+    font-weight: 700;
+  }
+  .label-input:focus { outline: 2px solid var(--color-accent); background:#fff; }
+
+  .value-cell { padding: 4px !important; }
+  .value-cell-inner {
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap: 2px;
+  }
+  .value-btn {
+    width: 30px; height: 40px;
+    min-width: 30px;
+    border-radius: 6px;
+    border: 1px solid var(--color-line);
+    background: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--color-accent);
+    cursor: pointer;
+  }
+  .value-btn:active { background: var(--color-accent-soft); }
+  .value-input {
+    width: 52px;
+    height: 40px;
+    text-align: center;
+    border: 1px solid var(--color-line);
+    border-radius: 6px;
+    font-size: 15px;
+    background: #fff;
+  }
+  .value-input:focus { outline: 2px solid var(--color-accent); }
+
+  .del-cell {
+    width: 44px;
+    text-align:center;
+    background: #FCFBF8;
+  }
+  .col-del-btn {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--color-line);
+    background: #fff;
+    color: var(--color-warn);
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .col-del-btn:active { background: var(--color-warn-soft); }
+
+  #table-actions {
+    display:flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  #add-col-btn {
+    flex: 1 1 200px;
+    height: var(--touch);
+    border-radius: 12px;
+    border: 2px dashed var(--color-line);
+    background: transparent;
+    color: var(--color-sub);
+    font-size: 15px;
+    cursor: pointer;
+  }
+  #add-col-btn:active { background: var(--color-accent-soft); border-color: var(--color-accent); }
+
+  .row-count-note {
+    font-size: 12px;
+    color: var(--color-sub);
+    margin-top: 8px;
+    text-align: center;
+  }
+
+  /* ---------- グラフ種類選択 ---------- */
+  .chart-type-row {
+    display:flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .chart-type-btn {
+    flex: 1 1 80px;
+    min-height: var(--touch);
+    border-radius: 12px;
+    border: 1px solid var(--color-line);
+    background: #FCFBF8;
+    font-size: 14px;
+    color: var(--color-ink);
+    cursor: pointer;
+    display:flex;
+    flex-direction: column;
+    align-items:center;
+    justify-content:center;
+    gap: 4px;
+    padding: 8px 4px;
+  }
+  .chart-type-btn .ct-icon { font-size: 20px; }
+  .chart-type-btn.active {
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+    font-weight: 700;
+  }
+
+  /* ---------- グラフ表示エリア ---------- */
+  #chart-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 320px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  #chart-canvas { width: 100% !important; height: 100% !important; }
+
+  #warn-box {
+    display:none;
+    background: var(--color-warn-soft);
+    border: 1px solid var(--color-warn);
+    color: #8A4A1E;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+
+  /* ---------- 軸設定 (棒・折れ線のみ表示) ---------- */
+  #axis-panel {
+    display:none;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-line);
+  }
+  .axis-row {
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .axis-row .axis-label { font-size: 13px; color: var(--color-sub); flex: 0 0 90px; }
+  .axis-toggle {
+    display:flex;
+    gap:6px;
+  }
+  .axis-toggle button {
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 8px;
+    border: 1px solid var(--color-line);
+    background: #fff;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .axis-toggle button.active {
+    background: var(--color-accent);
+    color: #fff;
+    border-color: var(--color-accent);
+  }
+  .axis-manual { display:none; gap:8px; align-items:center; flex-wrap: wrap;}
+  .axis-manual.show { display:flex; }
+  .axis-manual .stepper { flex: 0 0 140px; display:flex; align-items:center; gap:4px; }
+  .axis-manual .stepper button {
+    width: 34px; height: 40px; border-radius:8px; border:1px solid var(--color-line); background:#fff; font-size:16px; color:var(--color-accent); cursor:pointer;
+  }
+  .axis-manual .stepper input {
+    width: 100%; height: 40px; text-align:center; border:1px solid var(--color-line); border-radius:8px; font-size:14px;
+  }
+
+  /* ---------- モーダル共通 ---------- */
+  .modal-overlay {
+    display:none;
+    position: fixed; inset:0;
+    background: rgba(46,42,37,0.45);
+    z-index: 50;
+    align-items:center;
+    justify-content:center;
+    padding: 16px;
+  }
+  .modal-overlay.show { display:flex; }
+  .modal-box {
+    background: #fff;
+    border-radius: 18px;
+    max-width: 480px;
+    width: 100%;
+    max-height: 86vh;
+    overflow-y: auto;
+    padding: 24px;
+  }
+  .modal-box h2 {
+    margin: 0 0 12px 0;
+    font-size: 19px;
+  }
+  .modal-box p, .modal-box li { font-size: 15px; line-height: 1.8; color: var(--color-ink); }
+  .modal-box ul { padding-left: 20px; margin: 8px 0; }
+  .modal-close-btn {
+    margin-top: 16px;
+    width: 100%;
+    height: var(--touch);
+    border-radius: 12px;
+    border: none;
+    background: var(--color-accent);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* ---------- 設定モーダル (教員モード) ---------- */
+  .settings-block { margin-bottom: 18px; }
+  .settings-block h3 { font-size: 14px; color: var(--color-sub); margin: 0 0 8px 0; }
+  .toggle-row {
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--color-line);
+  }
+  .toggle-row span { font-size: 15px; }
+  .switch {
+    width: 52px; height: 30px;
+    border-radius: 15px;
+    background: var(--color-line);
+    position: relative;
+    cursor: pointer;
+    flex: none;
+  }
+  .switch.on { background: var(--color-accent); }
+  .switch::after {
+    content:'';
+    position:absolute;
+    top:3px; left:3px;
+    width:24px; height:24px;
+    border-radius:50%;
+    background:#fff;
+    transition: left .15s ease;
+  }
+  .switch.on::after { left: 25px; }
+
+  footer {
+    text-align:center;
+    font-size: 11px;
+    color: var(--color-sub);
+    padding: 10px;
+  }
+
+  /* ---------- レスポンシブ ---------- */
+  @media (max-width: 900px) {
+    #graph-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <h1><span>📊</span><ruby>表<rt>ひょう</rt></ruby>から グラフ</h1>
+    <div class="header-right">
+      <button class="icon-btn" id="help-btn" title="つかいかた" aria-label="つかいかた">❓</button>
+      <button class="icon-btn" id="settings-btn" title="せってい" aria-label="せってい">⚙️</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- プリセット -->
+    <section class="panel" id="preset-panel">
+      <p class="panel-title"><ruby>型<rt>かた</rt></ruby>を えらぶ（えらばなくても OK）</p>
+      <div id="preset-row"></div>
+    </section>
+
+    <!-- ひょう（本物のtable） -->
+    <section class="panel" id="table-panel">
+      <p class="panel-title"><ruby>表<rt>ひょう</rt></ruby></p>
+
+      <div class="meta-row">
+        <div class="meta-field">
+          <label for="title-input">タイトル</label>
+          <input id="title-input" type="text" placeholder="れい：すきなくだもの しらべ" value="1しゅうかんの きろく">
+        </div>
+        <div class="meta-field">
+          <label for="unit-input"><ruby>単位<rt>たんい</rt></ruby></label>
+          <input id="unit-input" type="text" placeholder="れい：人、こ、円" value="こ">
+        </div>
+      </div>
+
+      <div id="table-scroll">
+        <table id="data-table">
+          <thead>
+            <tr id="header-row">
+              <th class="corner-cell"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th class="row-head-cell" id="value-row-head"><ruby>数字<rt>すうじ</rt></ruby></th>
+            </tr>
+            <tr>
+              <td class="corner-cell" style="border:none;"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="table-actions">
+        <button id="add-col-btn">＋ <ruby>項目<rt>こうもく</rt></ruby>を ふやす</button>
+      </div>
+      <p class="row-count-note" id="row-count-note"></p>
+    </section>
+
+    <div id="graph-row">
+      <!-- グラフ -->
+      <section class="panel" id="graph-panel">
+        <p class="panel-title">グラフの<ruby>種類<rt>しゅるい</rt></ruby></p>
+        <div class="chart-type-row" id="chart-type-row">
+          <button class="chart-type-btn" data-type="bar"><span class="ct-icon">📊</span><ruby>棒<rt>ぼう</rt></ruby>グラフ</button>
+          <button class="chart-type-btn" data-type="line"><span class="ct-icon">📈</span><ruby>折<rt>お</rt></ruby>れ<ruby>線<rt>せん</rt></ruby>グラフ</button>
+          <button class="chart-type-btn" data-type="pie"><span class="ct-icon">🥧</span><ruby>円<rt>えん</rt></ruby>グラフ</button>
+          <button class="chart-type-btn" data-type="stacked"><span class="ct-icon">▬</span><ruby>帯<rt>おび</rt></ruby>グラフ</button>
+        </div>
+
+        <div id="warn-box"></div>
+
+        <div id="chart-wrap">
+          <canvas id="chart-canvas"></canvas>
+        </div>
+      </section>
+
+      <!-- 軸設定など -->
+      <section class="panel" id="controls-panel">
+        <p class="panel-title">グラフの こまかい<ruby>設定<rt>せってい</rt></ruby></p>
+        <div id="axis-panel" style="display:block; margin-top:0; padding-top:0; border-top:none;">
+          <div class="axis-row">
+            <span class="axis-label"><ruby>目<rt>め</rt></ruby>もりの<br><ruby>最大値<rt>さいだいち</rt></ruby></span>
+          </div>
+          <div class="axis-toggle" id="axis-mode-toggle">
+            <button data-mode="auto" class="active"><ruby>自動<rt>じどう</rt></ruby></button>
+            <button data-mode="manual"><ruby>手入力<rt>てにゅうりょく</rt></ruby></button>
+          </div>
+          <div class="axis-manual" id="axis-manual-row" style="margin-top:10px;">
+            <div class="stepper">
+              <button id="axis-max-minus">－</button>
+              <input id="axis-max-input" type="text" inputmode="numeric" value="10">
+              <button id="axis-max-plus">＋</button>
+            </div>
+            <div class="stepper">
+              <button id="axis-step-minus">－</button>
+              <input id="axis-step-input" type="text" inputmode="numeric" value="2">
+              <button id="axis-step-plus">＋</button>
+            </div>
+          </div>
+          <p style="font-size:11px; color:var(--color-sub); margin-top:8px;">（<ruby>棒<rt>ぼう</rt></ruby>グラフ・<ruby>折<rt>お</rt></ruby>れ<ruby>線<rt>せん</rt></ruby>グラフの ときだけ つかうよ）</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer><ruby>数字<rt>すうじ</rt></ruby>を かえると、グラフも すぐに かわるよ</footer>
+</div>
+
+<!-- つかいかた モーダル -->
+<div class="modal-overlay" id="help-modal">
+  <div class="modal-box">
+    <h2>📊 <ruby>使<rt>つか</rt></ruby>い<ruby>方<rt>かた</rt></ruby></h2>
+    <ul>
+      <li><ruby>上<rt>うえ</rt></ruby>の「<ruby>型<rt>かた</rt></ruby>を えらぶ」から<ruby>近<rt>ちか</rt></ruby>いものを<ruby>選<rt>えら</rt></ruby>ぶと、<ruby>項目<rt>こうもく</rt></ruby>の<ruby>名前<rt>なまえ</rt></ruby>が<ruby>入<rt>はい</rt></ruby>るよ</li>
+      <li><ruby>表<rt>ひょう</rt></ruby>の<ruby>数字<rt>すうじ</rt></ruby>は「＋」「－」ボタンか、キーボードで<ruby>変<rt>か</rt></ruby>えられるよ</li>
+      <li>「グラフの<ruby>種類<rt>しゅるい</rt></ruby>」ボタンで、グラフの<ruby>形<rt>かたち</rt></ruby>を<ruby>選<rt>えら</rt></ruby>べるよ</li>
+      <li><ruby>項目<rt>こうもく</rt></ruby>は「＋<ruby>項目<rt>こうもく</rt></ruby>を ふやす」や「×」ボタンで<ruby>増<rt>ふ</rt></ruby>やしたり<ruby>減<rt>へ</rt></ruby>らしたりできるよ</li>
+    </ul>
+    <button class="modal-close-btn" id="help-close-btn">とじる</button>
+  </div>
+</div>
+
+<!-- せってい モーダル -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal-box">
+    <h2>⚙️ <ruby>設定<rt>せってい</rt></ruby></h2>
+    <div class="settings-block">
+      <h3><ruby>項目<rt>こうもく</rt></ruby>の<ruby>数<rt>かず</rt></ruby></h3>
+      <div class="toggle-row">
+        <span>いまの<ruby>項目数<rt>こうもくすう</rt></ruby></span>
+        <span id="current-row-count-label">7</span>
+      </div>
+      <p style="font-size:13px; color:var(--color-sub); margin-top:6px;"><ruby>項目<rt>こうもく</rt></ruby>は<ruby>表<rt>ひょう</rt></ruby>の「＋<ruby>項目<rt>こうもく</rt></ruby>を ふやす」や、それぞれの「×」ボタンで だれでも かんたんに ふやしたり へらしたり できます。</p>
+    </div>
+    <div class="settings-block">
+      <h3>その<ruby>他<rt>た</rt></ruby></h3>
+      <div class="toggle-row">
+        <span><ruby>音<rt>おと</rt></ruby>を ならす</span>
+        <div class="switch" id="sound-toggle"></div>
+      </div>
+    </div>
+    <button class="modal-close-btn" id="settings-close-btn">とじる</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ================= プリセット定義 ================= */
+  var PRESETS = [
+    {
+      name: '1しゅうかんの きろく',
+      desc: 'げつ〜にちようび',
+      labels: ['げつようび','かようび','すいようび','もくようび','きんようび','どようび','にちようび'],
+      title: '1しゅうかんの きろく',
+      unit: 'こ'
+    },
+    {
+      name: '1年間の きろく',
+      desc: '4月〜3月',
+      labels: ['4月','5月','6月','7月','8月','9月','10月','11月','12月','1月','2月','3月'],
+      title: '1年間の きろく',
+      unit: '回'
+    },
+    {
+      name: 'すきな くだもの しらべ',
+      desc: 'アンケート',
+      labels: ['りんご','みかん','ぶどう','バナナ','いちご'],
+      title: 'すきな くだもの しらべ',
+      unit: '人'
+    },
+    {
+      name: 'クラスの 人数しらべ',
+      desc: 'アンケート',
+      labels: ['1くみ','2くみ','3くみ','4くみ'],
+      title: 'クラスの 人数しらべ',
+      unit: '人'
+    },
+    {
+      name: '気温の きろく',
+      desc: '理科・観察',
+      labels: ['8時','10時','12時','14時','16時'],
+      title: '気温の きろく',
+      unit: '℃'
+    },
+    {
+      name: '植物の 高さ',
+      desc: '理科・観察',
+      labels: ['1週目','2週目','3週目','4週目','5週目'],
+      title: '植物の 高さ',
+      unit: 'cm'
+    }
+  ];
+
+  /* ================= 状態管理 ================= */
+  var PALETTE = ['#3E7C6B','#C9793A','#4A7FB5','#B0558E','#8C9E4A','#C25454','#5C6B8A','#B08D3E','#4A9E8C','#8A5C9E','#6B7A3E','#7E5A3E'];
+
+  var state = {
+    title: '1しゅうかんの きろく',
+    unit: 'こ',
+    rows: [
+      {label:'げつようび', value:3},
+      {label:'かようび', value:5},
+      {label:'すいようび', value:2},
+      {label:'もくようび', value:6},
+      {label:'きんようび', value:4},
+      {label:'どようび', value:7},
+      {label:'にちようび', value:5}
+    ],
+    chartType: 'bar',
+    axisMode: 'auto',
+    axisMax: 10,
+    axisStep: 2,
+    soundOn: false
+  };
+
+  var chart = null;
+  var rowIdCounter = 0;
+  state.rows.forEach(function(r){ r.id = rowIdCounter++; });
+
+  /* ================= 要素取得 ================= */
+  var el = {
+    presetRow: document.getElementById('preset-row'),
+    titleInput: document.getElementById('title-input'),
+    unitInput: document.getElementById('unit-input'),
+    headerRow: document.getElementById('header-row'),
+    valueRowHead: document.getElementById('value-row-head'),
+    dataTable: document.getElementById('data-table'),
+    addColBtn: document.getElementById('add-col-btn'),
+    rowCountNote: document.getElementById('row-count-note'),
+    chartTypeRow: document.getElementById('chart-type-row'),
+    warnBox: document.getElementById('warn-box'),
+    chartCanvas: document.getElementById('chart-canvas'),
+    axisPanel: document.getElementById('axis-panel'),
+    axisModeToggle: document.getElementById('axis-mode-toggle'),
+    axisManualRow: document.getElementById('axis-manual-row'),
+    axisMaxInput: document.getElementById('axis-max-input'),
+    axisStepInput: document.getElementById('axis-step-input'),
+    helpBtn: document.getElementById('help-btn'),
+    helpModal: document.getElementById('help-modal'),
+    helpCloseBtn: document.getElementById('help-close-btn'),
+    settingsBtn: document.getElementById('settings-btn'),
+    settingsModal: document.getElementById('settings-modal'),
+    settingsCloseBtn: document.getElementById('settings-close-btn'),
+    currentRowCountLabel: document.getElementById('current-row-count-label'),
+    soundToggle: document.getElementById('sound-toggle')
+  };
+
+  /* ================= 効果音 (簡易 Web Audio) ================= */
+  var audioCtx = null;
+  function playTick(){
+    if(!state.soundOn) return;
+    try{
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var o = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      o.type = 'sine';
+      o.frequency.value = 660;
+      g.gain.value = 0.06;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
+      o.stop(audioCtx.currentTime + 0.13);
+    }catch(e){}
+  }
+
+  /* ================= プリセット描画 ================= */
+  function renderPresets(){
+    el.presetRow.innerHTML = '';
+    PRESETS.forEach(function(p){
+      var btn = document.createElement('button');
+      btn.className = 'preset-btn';
+      btn.innerHTML = '<span class="preset-name">' + escapeHtml(p.name) + '</span><span class="preset-desc">' + escapeHtml(p.desc) + '</span>';
+      btn.addEventListener('click', function(){
+        applyPreset(p);
+      });
+      el.presetRow.appendChild(btn);
+    });
+  }
+
+  function applyPreset(p){
+    state.title = p.title;
+    state.unit = p.unit;
+    state.rows = p.labels.map(function(label){
+      return { id: rowIdCounter++, label: label, value: 0 };
+    });
+    el.titleInput.value = state.title;
+    el.unitInput.value = state.unit;
+    playTick();
+    renderTable();
+    updateChart();
+  }
+
+  /* ================= 表（本物のtable）の描画 ================= */
+  function renderTable(){
+    // ヘッダー行（項目名 + 削除ボタン列）
+    el.headerRow.innerHTML = '<th class="corner-cell"><ruby>項目<rt>こうもく</rt></ruby></th>';
+    state.rows.forEach(function(row, idx){
+      var color = PALETTE[idx % PALETTE.length];
+      var th = document.createElement('th');
+      th.className = 'label-cell';
+      th.innerHTML =
+        '<div class="label-cell-inner">' +
+          '<div class="color-chip" style="background:' + color + '"></div>' +
+          '<input class="label-input" type="text" value="' + escapeHtml(row.label) + '" placeholder="こうもく名" data-id="' + row.id + '">' +
+        '</div>';
+      el.headerRow.appendChild(th);
+    });
+    var delTh = document.createElement('th');
+    delTh.className = 'del-cell';
+    delTh.innerHTML = '';
+    el.headerRow.appendChild(delTh);
+
+    // データ行（数値 + 削除ボタン）
+    var valueRow = document.createElement('tr');
+    valueRow.appendChild(cloneNode(el.valueRowHead));
+    state.rows.forEach(function(row){
+      var td = document.createElement('td');
+      td.className = 'value-cell';
+      td.innerHTML =
+        '<div class="value-cell-inner">' +
+          '<button class="value-btn val-minus" data-id="' + row.id + '">－</button>' +
+          '<input class="value-input" type="text" inputmode="decimal" value="' + row.value + '" data-id="' + row.id + '">' +
+          '<button class="value-btn val-plus" data-id="' + row.id + '">＋</button>' +
+        '</div>';
+      valueRow.appendChild(td);
+    });
+    var delTd = document.createElement('td');
+    delTd.className = 'del-cell';
+    delTd.innerHTML = '';
+    valueRow.appendChild(delTd);
+
+    var delRow = document.createElement('tr');
+    var cornerTd = document.createElement('td');
+    cornerTd.className = 'corner-cell';
+    cornerTd.style.border = 'none';
+    delRow.appendChild(cornerTd);
+    state.rows.forEach(function(row){
+      var td = document.createElement('td');
+      td.className = 'del-cell';
+      td.innerHTML = '<button class="col-del-btn" data-id="' + row.id + '" aria-label="この こうもくを けす">×</button>';
+      delRow.appendChild(td);
+    });
+    var emptyTd = document.createElement('td');
+    emptyTd.className = 'del-cell';
+    delRow.appendChild(emptyTd);
+
+    var tbody = el.dataTable.querySelector('tbody');
+    tbody.innerHTML = '';
+    tbody.appendChild(valueRow);
+    tbody.appendChild(delRow);
+
+    // イベント付与
+    el.dataTable.querySelectorAll('.label-input').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var id = Number(this.dataset.id);
+        var row = state.rows.find(function(r){ return r.id === id; });
+        if(row){ row.label = this.value; updateChart(); }
+      });
+    });
+    el.dataTable.querySelectorAll('.value-input').forEach(function(inp){
+      inp.addEventListener('input', function(){
+        var id = Number(this.dataset.id);
+        var row = state.rows.find(function(r){ return r.id === id; });
+        var v = parseFloat(this.value.replace(/[^0-9.\-]/g,''));
+        if(row){ row.value = isNaN(v) ? 0 : v; updateChart(); }
+      });
+      inp.addEventListener('blur', function(){ renderTable(); });
+    });
+    el.dataTable.querySelectorAll('.val-minus').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = Number(this.dataset.id);
+        var row = state.rows.find(function(r){ return r.id === id; });
+        if(row){ row.value = Math.max(0, roundTo1(row.value - 1)); playTick(); renderTable(); updateChart(); }
+      });
+    });
+    el.dataTable.querySelectorAll('.val-plus').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = Number(this.dataset.id);
+        var row = state.rows.find(function(r){ return r.id === id; });
+        if(row){ row.value = roundTo1(row.value + 1); playTick(); renderTable(); updateChart(); }
+      });
+    });
+    el.dataTable.querySelectorAll('.col-del-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        if(state.rows.length <= 1){ return; }
+        var id = Number(this.dataset.id);
+        state.rows = state.rows.filter(function(r){ return r.id !== id; });
+        playTick();
+        renderTable();
+        updateChart();
+      });
+    });
+
+    updateRowCountNote();
+  }
+
+  function cloneNode(node){ return node.cloneNode(true); }
+
+  function roundTo1(n){ return Math.round(n * 10) / 10; }
+
+  function updateRowCountNote(){
+    el.rowCountNote.textContent = 'いま ' + state.rows.length + 'こう もく あるよ';
+    el.currentRowCountLabel.textContent = state.rows.length;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  el.addColBtn.addEventListener('click', function(){
+    var nextIdx = state.rows.length;
+    state.rows.push({ id: rowIdCounter++, label: 'こうもく' + (nextIdx+1), value: 0 });
+    playTick();
+    renderTable();
+    updateChart();
+  });
+
+  /* ================= タイトル・単位 ================= */
+  el.titleInput.addEventListener('input', function(){
+    state.title = this.value;
+    updateChart();
+  });
+  el.unitInput.addEventListener('input', function(){
+    state.unit = this.value;
+    updateChart();
+  });
+
+  /* ================= グラフ種類選択 ================= */
+  el.chartTypeRow.querySelectorAll('.chart-type-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      state.chartType = this.dataset.type;
+      el.chartTypeRow.querySelectorAll('.chart-type-btn').forEach(function(b){ b.classList.remove('active'); });
+      this.classList.add('active');
+      playTick();
+      updateAxisPanelVisibility();
+      updateChart();
+    });
+  });
+
+  function updateAxisPanelVisibility(){
+    var showAxis = (state.chartType === 'bar' || state.chartType === 'line');
+    el.axisPanel.style.opacity = showAxis ? '1' : '0.35';
+    el.axisModeToggle.querySelectorAll('button').forEach(function(b){ b.disabled = !showAxis; });
+  }
+
+  /* ================= 軸設定 ================= */
+  el.axisModeToggle.querySelectorAll('button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      state.axisMode = this.dataset.mode;
+      el.axisModeToggle.querySelectorAll('button').forEach(function(b){ b.classList.remove('active'); });
+      this.classList.add('active');
+      el.axisManualRow.classList.toggle('show', state.axisMode === 'manual');
+      updateChart();
+    });
+  });
+  function bindStepper(minusBtn, plusBtn, input, key, min, step){
+    document.getElementById(minusBtn).addEventListener('click', function(){
+      state[key] = Math.max(min, roundTo1(state[key] - step));
+      input_el().value = state[key];
+      updateChart();
+    });
+    document.getElementById(plusBtn).addEventListener('click', function(){
+      state[key] = roundTo1(state[key] + step);
+      input_el().value = state[key];
+      updateChart();
+    });
+    function input_el(){ return document.getElementById(input); }
+    input_el().addEventListener('input', function(){
+      var v = parseFloat(this.value.replace(/[^0-9.\-]/g,''));
+      if(!isNaN(v)) { state[key] = v; updateChart(); }
+    });
+  }
+  bindStepper('axis-max-minus','axis-max-plus','axis-max-input','axisMax', 1, 1);
+  bindStepper('axis-step-minus','axis-step-plus','axis-step-input','axisStep', 1, 1);
+
+  /* ================= グラフ描画 ================= */
+  function niceMax(values){
+    var max = Math.max.apply(null, values.concat([1]));
+    var magnitude = Math.pow(10, Math.floor(Math.log10(max || 1)));
+    var normalized = max / magnitude;
+    var niceNorm;
+    if(normalized <= 1) niceNorm = 1;
+    else if(normalized <= 2) niceNorm = 2;
+    else if(normalized <= 5) niceNorm = 5;
+    else niceNorm = 10;
+    return niceNorm * magnitude;
+  }
+
+  function updateChart(){
+    var labels = state.rows.map(function(r){ return r.label || '（名前なし）'; });
+    var values = state.rows.map(function(r){ return r.value; });
+    var colors = state.rows.map(function(r, i){ return PALETTE[i % PALETTE.length]; });
+
+    // 警告表示 (すべて0のとき)
+    var total = values.reduce(function(a,b){ return a + b; }, 0);
+    if(total === 0){
+      el.warnBox.style.display = 'block';
+      el.warnBox.textContent = 'すうじが ぜんぶ 0だよ。ひょうに すうじを いれてね。';
+    } else {
+      el.warnBox.style.display = 'none';
+    }
+
+    var ctx = el.chartCanvas.getContext('2d');
+    if(chart){ chart.destroy(); }
+
+    var unit = state.unit || '';
+    var titleText = state.title || '';
+
+    if(state.chartType === 'pie'){
+      chart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{ data: values, backgroundColor: colors, borderColor:'#fff', borderWidth: 2 }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: { display: !!titleText, text: titleText, font: { family:"'BIZ UDPGothic'", size: 16, weight: '700' }, color: '#2E2A25' },
+            legend: { position: 'bottom', labels: { font: { family:"'BIZ UDPGothic'", size: 13 } } },
+            tooltip: {
+              callbacks: {
+                label: function(context){
+                  var v = context.parsed;
+                  var pct = total > 0 ? Math.round((v/total)*1000)/10 : 0;
+                  return context.label + '：' + v + unit + '（' + pct + '%）';
+                }
+              }
+            }
+          }
+        }
+      });
+    } else if(state.chartType === 'stacked'){
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: [titleText || 'わりあい'],
+          datasets: state.rows.map(function(r, i){
+            return {
+              label: r.label || '（名前なし）',
+              data: [r.value],
+              backgroundColor: colors[i]
+            };
+          })
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: true, ticks: { font: { family:"'BIZ UDPGothic'" } } },
+            y: { stacked: true, ticks: { font: { family:"'BIZ UDPGothic'", size: 13 } } }
+          },
+          plugins: {
+            title: { display: !!titleText, text: titleText, font: { family:"'BIZ UDPGothic'", size: 16, weight: '700' }, color: '#2E2A25' },
+            legend: { position: 'bottom', labels: { font: { family:"'BIZ UDPGothic'", size: 13 } } },
+            tooltip: {
+              callbacks: {
+                label: function(context){
+                  var v = context.parsed.x;
+                  var pct = total > 0 ? Math.round((v/total)*1000)/10 : 0;
+                  return context.dataset.label + '：' + v + unit + '（' + pct + '%）';
+                }
+              }
+            }
+          }
+        }
+      });
+    } else {
+      // bar または line
+      var axisMax, axisStep;
+      if(state.axisMode === 'auto'){
+        axisMax = niceMax(values);
+        axisStep = axisMax / 5;
+      } else {
+        axisMax = state.axisMax > 0 ? state.axisMax : 10;
+        axisStep = state.axisStep > 0 ? state.axisStep : 1;
+      }
+
+      chart = new Chart(ctx, {
+        type: state.chartType === 'line' ? 'line' : 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: unit,
+            data: values,
+            backgroundColor: state.chartType === 'line' ? 'rgba(62,124,107,0.15)' : colors,
+            borderColor: state.chartType === 'line' ? '#3E7C6B' : colors,
+            borderWidth: state.chartType === 'line' ? 3 : 1,
+            pointBackgroundColor: '#3E7C6B',
+            pointRadius: state.chartType === 'line' ? 5 : 0,
+            fill: state.chartType === 'line',
+            tension: 0.15,
+            borderRadius: state.chartType === 'bar' ? 6 : 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: axisMax,
+              ticks: {
+                stepSize: axisStep,
+                font: { family:"'BIZ UDPGothic'" },
+                callback: function(v){ return v + unit; }
+              },
+              title: { display: !!unit, text: unit, font: { family:"'BIZ UDPGothic'", size: 12 } }
+            },
+            x: {
+              ticks: { font: { family:"'BIZ UDPGothic'", size: 13 } }
+            }
+          },
+          plugins: {
+            title: { display: !!titleText, text: titleText, font: { family:"'BIZ UDPGothic'", size: 16, weight: '700' }, color: '#2E2A25' },
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context){ return context.parsed.y + unit; }
+              }
+            }
+          }
+        }
+      });
+    }
+  }
+
+  /* ================= モーダル ================= */
+  function openModal(m){ m.classList.add('show'); }
+  function closeModal(m){ m.classList.remove('show'); }
+
+  el.helpBtn.addEventListener('click', function(){ openModal(el.helpModal); });
+  el.helpCloseBtn.addEventListener('click', function(){ closeModal(el.helpModal); });
+  el.helpModal.addEventListener('click', function(e){ if(e.target === el.helpModal) closeModal(el.helpModal); });
+
+  el.settingsBtn.addEventListener('click', function(){ openModal(el.settingsModal); });
+  el.settingsCloseBtn.addEventListener('click', function(){ closeModal(el.settingsModal); });
+  el.settingsModal.addEventListener('click', function(e){ if(e.target === el.settingsModal) closeModal(el.settingsModal); });
+
+  el.soundToggle.addEventListener('click', function(){
+    state.soundOn = !state.soundOn;
+    el.soundToggle.classList.toggle('on', state.soundOn);
+    if(state.soundOn) playTick();
+  });
+
+  /* ================= 初期化 ================= */
+  function init(){
+    renderPresets();
+    renderTable();
+    // 初期のグラフ種類ボタンをアクティブに
+    el.chartTypeRow.querySelector('[data-type="bar"]').classList.add('active');
+    updateAxisPanelVisibility();
+    updateChart();
+    // 初回起動時に使い方モーダルを表示
+    openModal(el.helpModal);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

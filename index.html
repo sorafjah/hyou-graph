@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>グラフ作成・共有ツール</title>
+  <title>グラフ作成ツール</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js CDN -->
@@ -12,253 +12,319 @@
     body {
       touch-action: manipulation;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow-x: hidden;
     }
     input, select, button {
-      min-height: 40px;
+      min-height: 36px;
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 min-h-screen pb-12">
+<body class="bg-slate-100 text-slate-800 min-h-screen">
 
-  <!-- 上部ナビゲーションヘッダー -->
-  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-    <div class="max-w-4xl mx-auto px-4 flex justify-between items-center h-14">
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm py-1.5 px-3">
+    <div class="max-w-6xl mx-auto flex justify-between items-center flex-wrap gap-2">
       <!-- タブ切り替えボタン -->
-      <div id="tabNav" class="flex space-x-2">
-        <button id="tabBtnInput" onclick="switchTab('input')" class="px-4 py-2 rounded-lg font-bold transition-all text-sm flex items-center gap-2 bg-indigo-600 text-white shadow">
-          <span>1. データ詳細設定</span>
+      <div class="flex space-x-2">
+        <button id="tabBtnGraph" onclick="switchTab('graph')" class="px-3 py-1 rounded-lg font-bold transition-all text-xs sm:text-sm bg-indigo-600 text-white shadow">
+          グラフ
         </button>
-        <button id="tabBtnGraph" onclick="switchTab('graph')" class="px-4 py-2 rounded-lg font-bold transition-all text-sm flex items-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200">
-          <span>2. グラフ表示</span>
+        <button id="tabBtnInput" onclick="switchTab('input')" class="px-3 py-1 rounded-lg font-bold transition-all text-xs sm:text-sm bg-slate-100 text-slate-600 hover:bg-slate-200">
+          設定
         </button>
       </div>
 
-      <!-- 共有ボタン -->
-      <button onclick="openShareModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold shadow flex items-center gap-1.5 transition-colors">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
-        <span>Classroom共有用リンク</span>
-      </button>
+      <div class="flex items-center gap-2 text-xs">
+        <!-- プリセット選択ボタン -->
+        <div class="flex items-center gap-1">
+          <span class="font-bold text-slate-500 hidden sm:inline">プリセット:</span>
+          <select id="presetSelect" onchange="loadPreset(this.value)" class="px-2 py-1 border border-slate-300 rounded-lg bg-white font-bold text-slate-700 outline-none">
+            <optgroup label="標準プリセット">
+              <option value="temp">1週間の最高気温 (折れ線)</option>
+              <option value="sports">人気のスポーツ (棒)</option>
+              <option value="schedule">中学生の1日の過ごし方 (円)</option>
+            </optgroup>
+            <optgroup id="savedPresetsGroup" label="★ 保存したグラフ" class="hidden">
+              <!-- 動的に追加 -->
+            </optgroup>
+          </select>
+        </div>
+      </div>
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-4 pt-6">
+  <!-- トースト通知用のコンテナ -->
+  <div id="toast" class="fixed top-12 right-4 z-50 bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg text-xs font-bold transition-opacity duration-300 opacity-0 pointer-events-none">
+    リンクをコピーしました！
+  </div>
 
-    <!-- ==================== ページ 1: データ入力 ==================== -->
-    <div id="pageInput" class="space-y-6">
+  <main class="max-w-6xl mx-auto px-2 sm:px-3 py-1">
 
-      <!-- 1. 基本設定 -->
-      <section class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-        <h2 class="text-base font-bold text-slate-700 border-b pb-2 mb-4 flex items-center gap-2">
-          <span class="w-2 h-4 bg-indigo-600 rounded-full"></span>
-          グラフの基本設定
-        </h2>
+    <div id="pageGraph" class="space-y-1.5">
+
+      <div class="bg-white rounded-xl p-2.5 sm:p-3 shadow-sm border border-slate-200 space-y-1.5">
         
-        <div class="space-y-4">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">グラフのタイトル</label>
-            <input type="text" id="graphTitle" value="1週間の最高気温の移り変わり" oninput="onDataChanged()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1">横軸の項目名</label>
-              <input type="text" id="xAxisLabel" value="曜日" oninput="onDataChanged()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1">縦軸の項目名</label>
-              <input type="text" id="yAxisLabel" value="最高気温" oninput="onDataChanged()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-            </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-600 mb-1">単位</label>
-              <input type="text" id="yAxisUnit" value="℃" placeholder="例: ℃, 人, 個" oninput="onDataChanged()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 2. グラフの種類と軸調整 -->
-      <section class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-        <h2 class="text-base font-bold text-slate-700 border-b pb-2 mb-4 flex items-center gap-2">
-          <span class="w-2 h-4 bg-indigo-600 rounded-full"></span>
-          グラフの目盛り設定
-        </h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">縦軸の最小値（任意）</label>
-            <input type="number" id="yMin" placeholder="自動設定" oninput="onDataChanged()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-600 mb-1">縦軸の最大値（任意）</label>
-            <input type="number" id="yMax" placeholder="自動設定" oninput="onDataChanged()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-          </div>
-        </div>
-      </section>
-
-      <!-- 3. データ表の編集 -->
-      <section class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
-        <div class="flex justify-between items-center border-b pb-2 mb-4">
-          <h2 class="text-base font-bold text-slate-700 flex items-center gap-2">
-            <span class="w-2 h-4 bg-indigo-600 rounded-full"></span>
-            表データの編集
-          </h2>
-          <div class="flex gap-2">
-            <button onclick="addRow()" class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition-colors">＋ 行を追加</button>
-            <button onclick="removeRow()" class="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold transition-colors">－ 削除</button>
-          </div>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm text-left">
-            <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
-              <tr>
-                <th class="p-2.5 w-12 text-center">#</th>
-                <th class="p-2.5">項目名</th>
-                <th class="p-2.5 w-40">数値</th>
-              </tr>
-            </thead>
-            <tbody id="dataTableBody" class="divide-y divide-slate-100">
-              <!-- 初期データ -->
-              <tr><td class="text-center font-bold text-slate-400">1</td><td class="p-1.5"><input type="text" class="input-label w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="月"></td><td class="p-1.5"><input type="number" class="input-val w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="18"></td></tr>
-              <tr><td class="text-center font-bold text-slate-400">2</td><td class="p-1.5"><input type="text" class="input-label w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="火"></td><td class="p-1.5"><input type="number" class="input-val w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="20"></td></tr>
-              <tr><td class="text-center font-bold text-slate-400">3</td><td class="p-1.5"><input type="text" class="input-label w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="水"></td><td class="p-1.5"><input type="number" class="input-val w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="19"></td></tr>
-              <tr><td class="text-center font-bold text-slate-400">4</td><td class="p-1.5"><input type="text" class="input-label w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="木"></td><td class="p-1.5"><input type="number" class="input-val w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="22"></td></tr>
-              <tr><td class="text-center font-bold text-slate-400">5</td><td class="p-1.5"><input type="text" class="input-label w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="金"></td><td class="p-1.5"><input type="number" class="input-val w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="25"></td></tr>
-              <tr><td class="text-center font-bold text-slate-400">6</td><td class="p-1.5"><input type="text" class="input-label w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="土"></td><td class="p-1.5"><input type="number" class="input-val w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="23"></td></tr>
-              <tr><td class="text-center font-bold text-slate-400">7</td><td class="p-1.5"><input type="text" class="input-label w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="日"></td><td class="p-1.5"><input type="number" class="input-val w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="21"></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-    </div>
-
-    <!-- ==================== ページ 2: グラフ表示 ==================== -->
-    <div id="pageGraph" class="hidden space-y-6">
-
-      <!-- グラフカード -->
-      <div class="bg-white rounded-xl p-5 md:p-6 shadow-sm border border-slate-200 space-y-6">
-        
-        <!-- グラフ上部ツールバー（グラフ種類の切替） -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 gap-3">
-          <div class="flex items-center gap-2">
-            <span class="w-3 h-3 bg-indigo-600 rounded-full inline-block"></span>
-            <span class="font-bold text-slate-800 text-sm md:text-base">グラフビュー</span>
-          </div>
-
-          <!-- グラフ表示画面でのグラフ種類選択 -->
-          <div class="flex items-center gap-2 w-full sm:w-auto">
-            <label class="text-xs font-bold text-slate-500 whitespace-nowrap">グラフの種類:</label>
-            <select id="chartType" onchange="renderGraph()" class="w-full sm:w-auto px-3 py-1.5 border border-indigo-200 bg-indigo-50 rounded-lg font-bold text-indigo-700 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
-              <option value="line">折れ線グラフ（変化・推移）</option>
-              <option value="bar">棒グラフ（数量の比較）</option>
-              <option value="pie">円グラフ（割合・構成比）</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- グラフ描画キャンバス -->
-        <div class="chart-container relative w-full h-[360px] md:h-[420px]">
+        <!-- グラフ描画領域（余白削減で画面いっぱいに拡大） -->
+        <div class="chart-container relative w-full h-[280px] sm:h-[340px] md:h-[380px]">
           <canvas id="myChart"></canvas>
         </div>
 
-        <!-- グラフ表示画面でのインライン数値変更（即時反映） -->
-        <div class="border-t border-slate-200 pt-5">
-          <div class="flex justify-between items-center mb-3">
-            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-              <span>データ表（数値の直接変更が可能です）</span>
-            </h3>
-            <div class="flex gap-1.5">
-              <button onclick="addRow(); renderGraph();" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded text-xs font-bold">＋ 項目追加</button>
-              <button onclick="removeRow(); renderGraph();" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded text-xs font-bold">－ 削除</button>
-            </div>
+        <!-- インライン編集可能なデータテーブル -->
+        <div class="pt-0.5">
+          <div id="graphPageTable" class="overflow-x-auto">
+            <!-- JavaScriptで同期生成 -->
           </div>
 
-          <!-- インライン編集可能なデータテーブル -->
-          <div id="graphPageTable" class="overflow-x-auto">
-            <!-- JavaScriptで連動生成 -->
+          <!-- 項目の追加・削除ボタン（表の下に配置） -->
+          <div class="flex justify-end gap-2 mt-1.5">
+            <button onclick="addRow(); renderGraph();" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-200 transition-colors">＋ 項目を追加</button>
+            <button onclick="removeRow(); renderGraph();" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200 transition-colors">－ 削除</button>
           </div>
         </div>
 
+        <!-- グラフの種類選択（一番下・うすい水色塗りつぶしなし） -->
+        <div class="border-t border-slate-100 pt-1.5 flex justify-center items-center gap-2">
+          <span class="text-xs font-bold text-slate-600">グラフの種類:</span>
+          <select id="chartType" onchange="renderGraph()" class="px-3 py-1 border border-slate-300 bg-white rounded-lg font-bold text-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+            <option value="line">折れ線グラフ（変化・推移）</option>
+            <option value="bar">棒グラフ（数量の比較）</option>
+            <option value="pie">円グラフ（割合・構成比）</option>
+          </select>
+        </div>
+
       </div>
+
+    </div>
+
+    <div id="pageInput" class="hidden space-y-3">
+
+      <!-- 1. 基本設定 -->
+      <section class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <h2 class="text-sm font-bold text-slate-700 border-b pb-1.5 mb-3 flex items-center gap-2">
+          <span class="w-2 h-3.5 bg-indigo-600 rounded-full"></span>
+          基本設定
+        </h2>
+        
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">グラフのタイトル</label>
+            <input type="text" id="graphTitle" value="1週間の最高気温の移り変わり" oninput="onDataChanged()" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">横軸の項目名</label>
+              <input type="text" id="xAxisLabel" value="曜日" oninput="onDataChanged()" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">縦軸の項目名</label>
+              <input type="text" id="yAxisLabel" value="最高気温" oninput="onDataChanged()" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-600 mb-1">単位</label>
+              <input type="text" id="yAxisUnit" value="℃" placeholder="例: ℃, 人" oninput="onDataChanged()" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 目盛り設定 -->
+      <section class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <h2 class="text-sm font-bold text-slate-700 border-b pb-1.5 mb-3 flex items-center gap-2">
+          <span class="w-2 h-3.5 bg-indigo-600 rounded-full"></span>
+          目盛り設定（空欄時は自動）
+        </h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">縦軸の最小値</label>
+            <input type="number" id="yMin" placeholder="自動 (最小値-1)" oninput="onDataChanged()" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">縦軸の最大値</label>
+            <input type="number" id="yMax" placeholder="自動 (最大値+1)" oninput="onDataChanged()" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">目盛りの幅（刻み）</label>
+            <input type="number" id="yStep" placeholder="自動" oninput="onDataChanged()" class="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. データ表（設定画面側） -->
+      <section class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <h2 class="text-sm font-bold text-slate-700 border-b pb-1.5 mb-3 flex items-center gap-2">
+          <span class="w-2 h-3.5 bg-indigo-600 rounded-full"></span>
+          データ編集
+        </h2>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+              <tr>
+                <th class="p-2 w-10 text-center">#</th>
+                <th class="p-2">項目名</th>
+                <th class="p-2 w-32">数値</th>
+              </tr>
+            </thead>
+            <tbody id="dataTableBody" class="divide-y divide-slate-100">
+              <!-- JSで動的読み込み -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-3">
+          <button onclick="addRow()" class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-200 transition-colors">＋ 項目を追加</button>
+          <button onclick="removeRow()" class="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200 transition-colors">－ 削除</button>
+        </div>
+      </section>
+
+      <!-- 4. ブラウザ内での名前を付けて保存 -->
+      <section class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <h2 class="text-sm font-bold text-slate-700 border-b pb-1.5 mb-3 flex items-center gap-2">
+          <span class="w-2 h-3.5 bg-indigo-600 rounded-full"></span>
+          グラフの保存（一時保存）
+        </h2>
+        <div class="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+          <input type="text" id="saveNameInput" placeholder="例: クラスのテスト結果" class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none flex-1">
+          <button onclick="saveCurrentGraphInMemory()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-1 shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+            名前を付けて保存
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-1.5">※ 保存したデータは上の「プリセット」選択肢に追加され、簡単に切り替えられます。</p>
+      </section>
+
+      <!-- 5. 配布用リンク作成 -->
+      <section class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <h2 class="text-sm font-bold text-slate-700 border-b pb-1.5 mb-3 flex items-center gap-2">
+          <span class="w-2 h-3.5 bg-emerald-600 rounded-full"></span>
+          配布用リンクの作成
+        </h2>
+        <div class="space-y-3">
+          <label class="block text-xs font-bold text-slate-600">共有モードの選択:</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center gap-2 p-2.5 border rounded-lg cursor-pointer bg-slate-50 hover:bg-indigo-50/50 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/30">
+              <input type="radio" name="shareMode" value="graph" checked class="text-indigo-600 focus:ring-indigo-500">
+              <div>
+                <span class="font-bold text-slate-800 block">グラフ表示画面のみ</span>
+                <span class="text-[11px] text-slate-500">生徒が開いた際、直接グラフ画面が表示されます</span>
+              </div>
+            </label>
+            <label class="flex items-center gap-2 p-2.5 border rounded-lg cursor-pointer bg-slate-50 hover:bg-indigo-50/50 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50/30">
+              <input type="radio" name="shareMode" value="full" class="text-indigo-600 focus:ring-indigo-500">
+              <div>
+                <span class="font-bold text-slate-800 block">全機能（データ入力 ＋ グラフ）</span>
+                <span class="text-[11px] text-slate-500">設定タブとグラフタブの両方が利用可能です</span>
+              </div>
+            </label>
+          </div>
+
+          <button onclick="copyShareLink()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs sm:text-sm transition-colors flex items-center justify-center gap-2 shadow">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+            配布用リンクを作成してコピー
+          </button>
+        </div>
+      </section>
 
     </div>
 
   </main>
 
-  <!-- モーダル: 共有リンク生成 -->
-  <div id="shareModal" class="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-5">
-      <div class="flex justify-between items-center border-b pb-3">
-        <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
-          <span class="text-emerald-600">🔗</span> 生徒共有用リンクの作成
-        </h3>
-        <button onclick="closeShareModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
-      </div>
-
-      <p class="text-xs text-slate-600 leading-relaxed">
-        現在設定されているデータ（タイトル、数値、単位等）を含んだ専用のURLを発行します。Google ClassroomにこのURLを貼り付けて共有できます。
-      </p>
-
-      <div class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-        <label class="block text-xs font-bold text-slate-700">生徒に共有する画面モード</label>
-        
-        <label class="flex items-start gap-2.5 cursor-pointer">
-          <input type="radio" name="shareMode" value="graph_only" checked class="mt-0.5 text-indigo-600 focus:ring-indigo-500">
-          <div>
-            <span class="text-sm font-bold text-slate-800 block">グラフ表示画面のみ共有（おすすめ）</span>
-            <span class="text-xs text-slate-500 block">生徒はグラフ画面からスタートし、直接データの数値変更や種類切替ができます。</span>
-          </div>
-        </label>
-
-        <label class="flex items-start gap-2.5 cursor-pointer pt-2 border-t border-slate-200">
-          <input type="radio" name="shareMode" value="all" class="mt-0.5 text-indigo-600 focus:ring-indigo-500">
-          <div>
-            <span class="text-sm font-bold text-slate-800 block">全機能（データ入力＋グラフ）を共有</span>
-            <span class="text-xs text-slate-500 block">タブ切り替えも含め、すべての設定項目にアクセスできるようにします。</span>
-          </div>
-        </label>
-      </div>
-
-      <div>
-        <button onclick="generateShareUrl()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow transition-colors">
-          URLを生成してクリップボードにコピー
-        </button>
-      </div>
-
-      <div id="copySuccessMsg" class="hidden p-2.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg text-center border border-emerald-200">
-        ✓ 共有URLをコピーしました！Classroom等に貼り付けてご活用ください。
-      </div>
-    </div>
-  </div>
-
   <script>
     let chartInstance = null;
-    let currentTab = 'input';
+    let currentTab = 'graph';
+
+    // プリセットデータ定義（ダンス追加・バラバラの順・中学生の過ごし方）
+    const presets = {
+      temp: {
+        title: "1週間の最高気温の移り変わり",
+        xLabel: "曜日",
+        yLabel: "最高気温",
+        unit: "℃",
+        type: "line",
+        data: [
+          { label: "月", val: 18 },
+          { label: "火", val: 20 },
+          { label: "水", val: 19 },
+          { label: "木", val: 22 },
+          { label: "金", val: 25 },
+          { label: "土", val: 23 },
+          { label: "日", val: 21 }
+        ]
+      },
+      sports: {
+        title: "クラスで人気のスポーツ調べ",
+        xLabel: "種目",
+        yLabel: "人数",
+        unit: "人",
+        type: "bar",
+        data: [
+          { label: "サッカー", val: 7 },
+          { label: "ダンス", val: 10 },
+          { label: "バスケ", val: 5 },
+          { label: "水泳", val: 8 },
+          { label: "陸上", val: 3 }
+        ]
+      },
+      schedule: {
+        title: "中学生の1日の過ごし方",
+        xLabel: "内容",
+        yLabel: "時間",
+        unit: "時間",
+        type: "pie",
+        data: [
+          { label: "睡眠", val: 7 },
+          { label: "学校", val: 7 },
+          { label: "部活動", val: 2 },
+          { label: "家庭学習", val: 2 },
+          { label: "自由時間", val: 4 },
+          { label: "食事・その他", val: 2 }
+        ]
+      }
+    };
 
     // 初期化処理
     window.addEventListener('DOMContentLoaded', () => {
-      // URLクエリパラメータの確認（共有リンクからのアクセス）
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('data')) {
-        loadDataFromUrl(urlParams);
-      } else {
-        // イベントリスナーの登録
-        bindInputEvents();
+      // URLハッシュから設定の復元を試みる
+      if (!loadFromHash()) {
+        loadPreset('temp'); // ハッシュがなければデフォルトの気温プリセット
       }
-
-      // タブの初期表示
-      const shareModeParam = urlParams.get('mode');
-      if (shareModeParam === 'graph_only') {
-        // グラフのみモードの場合はデータ入力タブを非表示にし、直接グラフ画面へ
-        document.getElementById('tabNav').classList.add('hidden');
-        switchTab('graph');
-      } else {
-        switchTab('input');
-      }
+      switchTab('graph');
     });
 
-    // 入力変更イベントのバインド
+    // プリセット読み込み
+    function loadPreset(key) {
+      const p = presets[key];
+      if (!p) return;
+      applyConfig(p);
+    }
+
+    function applyConfig(cfg) {
+      document.getElementById('graphTitle').value = cfg.title || '';
+      document.getElementById('xAxisLabel').value = cfg.xLabel || '';
+      document.getElementById('yAxisLabel').value = cfg.yLabel || '';
+      document.getElementById('yAxisUnit').value = cfg.unit || '';
+      document.getElementById('chartType').value = cfg.type || 'line';
+      document.getElementById('yMin').value = cfg.yMin !== undefined ? cfg.yMin : '';
+      document.getElementById('yMax').value = cfg.yMax !== undefined ? cfg.yMax : '';
+      document.getElementById('yStep').value = cfg.yStep !== undefined ? cfg.yStep : '';
+
+      const tbody = document.getElementById('dataTableBody');
+      tbody.innerHTML = '';
+      (cfg.data || []).forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="text-center font-bold text-slate-400 p-1.5">${idx + 1}</td>
+          <td class="p-1"><input type="text" class="input-label w-full px-2 py-1 border rounded text-xs focus:ring-1 focus:ring-indigo-500" value="${item.label}"></td>
+          <td class="p-1"><input type="number" class="input-val w-full px-2 py-1 border rounded text-xs focus:ring-1 focus:ring-indigo-500" value="${item.val}"></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      bindInputEvents();
+      renderGraph();
+    }
+
     function bindInputEvents() {
       const tbody = document.getElementById('dataTableBody');
       tbody.removeEventListener('input', onDataChanged);
@@ -266,12 +332,9 @@
     }
 
     function onDataChanged() {
-      if (currentTab === 'graph') {
-        renderGraph();
-      }
+      renderGraph();
     }
 
-    // タブ切り替え処理
     function switchTab(tabName) {
       currentTab = tabName;
       const pageInput = document.getElementById('pageInput');
@@ -282,37 +345,30 @@
       if (tabName === 'input') {
         pageInput.classList.remove('hidden');
         pageGraph.classList.add('hidden');
-        
-        tabBtnInput.className = "px-4 py-2 rounded-lg font-bold transition-all text-sm flex items-center gap-2 bg-indigo-600 text-white shadow";
-        tabBtnGraph.className = "px-4 py-2 rounded-lg font-bold transition-all text-sm flex items-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200";
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        tabBtnInput.className = "px-3 py-1 rounded-lg font-bold transition-all text-xs sm:text-sm bg-indigo-600 text-white shadow";
+        tabBtnGraph.className = "px-3 py-1 rounded-lg font-bold transition-all text-xs sm:text-sm bg-slate-100 text-slate-600 hover:bg-slate-200";
       } else {
         pageInput.classList.add('hidden');
         pageGraph.classList.remove('hidden');
-
-        tabBtnGraph.className = "px-4 py-2 rounded-lg font-bold transition-all text-sm flex items-center gap-2 bg-indigo-600 text-white shadow";
-        tabBtnInput.className = "px-4 py-2 rounded-lg font-bold transition-all text-sm flex items-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200";
-
+        tabBtnGraph.className = "px-3 py-1 rounded-lg font-bold transition-all text-xs sm:text-sm bg-indigo-600 text-white shadow";
+        tabBtnInput.className = "px-3 py-1 rounded-lg font-bold transition-all text-xs sm:text-sm bg-slate-100 text-slate-600 hover:bg-slate-200";
         renderGraph();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }
 
-    // 行の追加
     function addRow() {
       const tbody = document.getElementById('dataTableBody');
       const rowCount = tbody.children.length + 1;
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td class="text-center font-bold text-slate-400 p-2">${rowCount}</td>
-        <td class="p-1.5"><input type="text" class="input-label w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="項目${rowCount}"></td>
-        <td class="p-1.5"><input type="number" class="input-val w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="0"></td>
+        <td class="text-center font-bold text-slate-400 p-1.5">${rowCount}</td>
+        <td class="p-1"><input type="text" class="input-label w-full px-2 py-1 border rounded text-xs focus:ring-1 focus:ring-indigo-500" value="項目${rowCount}"></td>
+        <td class="p-1"><input type="number" class="input-val w-full px-2 py-1 border rounded text-xs focus:ring-1 focus:ring-indigo-500" value="0"></td>
       `;
       tbody.appendChild(tr);
       bindInputEvents();
     }
 
-    // 行の削除
     function removeRow() {
       const tbody = document.getElementById('dataTableBody');
       if (tbody.children.length > 1) {
@@ -321,7 +377,6 @@
       }
     }
 
-    // グラフ描画と表データの同期
     function renderGraph() {
       const title = document.getElementById('graphTitle').value || '';
       const xLabel = document.getElementById('xAxisLabel').value || '';
@@ -331,7 +386,7 @@
 
       const fullYLabel = yUnit ? `${yLabel} (${yUnit})` : yLabel;
 
-      // データ取得
+      // 入力データの取得
       const labels = [];
       const data = [];
       const labelInputs = document.querySelectorAll('.input-label');
@@ -342,11 +397,31 @@
         data.push(parseFloat(valInputs[index].value) || 0);
       });
 
-      // グラフ画面下の編集可能テーブルを同期生成
+      // 同期表の生成
       syncInteractiveTable(labels, data, xLabel, fullYLabel);
 
-      const yMinVal = document.getElementById('yMin').value;
-      const yMaxVal = document.getElementById('yMax').value;
+      // データ最小値・最大値の算出
+      const dataMin = data.length > 0 ? Math.min(...data) : 0;
+      const dataMax = data.length > 0 ? Math.max(...data) : 10;
+
+      const yMinInput = document.getElementById('yMin').value;
+      const yMaxInput = document.getElementById('yMax').value;
+      const yStepInput = document.getElementById('yStep').value;
+
+      // ステップ幅の計算（未入力の場合はデータ範囲に合わせて自動決定）
+      let step = yStepInput !== '' ? parseFloat(yStepInput) : null;
+      if (!step || isNaN(step) || step <= 0) {
+        const range = Math.max(dataMax - dataMin, 1);
+        if (range <= 10) step = 1;
+        else if (range <= 25) step = 2;
+        else if (range <= 50) step = 5;
+        else if (range <= 100) step = 10;
+        else step = Math.pow(10, Math.floor(Math.log10(range))) || 1;
+      }
+
+      // 自動目盛りの計算：最小値・最大値をそれぞれ「目盛り幅1個分」外側に設定
+      const computedMin = yMinInput !== '' ? parseFloat(yMinInput) : dataMin - step;
+      const computedMax = yMaxInput !== '' ? parseFloat(yMaxInput) : dataMax + step;
 
       const ctx = document.getElementById('myChart').getContext('2d');
 
@@ -354,7 +429,6 @@
         chartInstance.destroy();
       }
 
-      // カラーパレット
       const colors = [
         '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
         '#8b5cf6', '#ec4899', '#14b8a6', '#64748b'
@@ -367,23 +441,27 @@
             title: {
               display: !!xLabel,
               text: xLabel,
-              font: { weight: 'bold', size: 13 },
+              font: { weight: 'bold', size: 12 },
               color: '#334155'
             },
-            ticks: { color: '#334155', font: { size: 12 } },
+            ticks: { color: '#334155', font: { size: 11 } },
             grid: { color: '#f1f5f9' }
           },
           y: {
             title: {
               display: !!fullYLabel,
               text: fullYLabel,
-              font: { weight: 'bold', size: 13 },
+              font: { weight: 'bold', size: 12 },
               color: '#334155'
             },
-            ticks: { color: '#334155', font: { size: 12 } },
+            ticks: { 
+              color: '#334155', 
+              font: { size: 11 },
+              stepSize: step
+            },
             grid: { color: '#e2e8f0' },
-            min: yMinVal !== '' ? parseFloat(yMinVal) : undefined,
-            max: yMaxVal !== '' ? parseFloat(yMaxVal) : undefined
+            min: computedMin,
+            max: computedMax
           }
         };
       }
@@ -395,13 +473,13 @@
           datasets: [{
             label: fullYLabel || '数値',
             data: data,
-            backgroundColor: chartType === 'pie' ? colors : (chartType === 'bar' ? '#3b82f6' : 'rgba(59, 130, 246, 0.15)'),
+            backgroundColor: chartType === 'pie' ? colors : (chartType === 'bar' ? '#3b82f6' : 'transparent'),
             borderColor: chartType === 'pie' ? '#ffffff' : '#2563eb',
             borderWidth: 2,
             pointBackgroundColor: '#2563eb',
             pointRadius: 4,
             tension: 0.1,
-            fill: chartType === 'line'
+            fill: false
           }]
         },
         options: {
@@ -411,14 +489,14 @@
             title: {
               display: !!title,
               text: title,
-              font: { size: 18, weight: 'bold' },
+              font: { size: 15, weight: 'bold' },
               color: '#0f172a',
-              padding: { bottom: 16 }
+              padding: { bottom: 8 }
             },
             legend: {
               display: chartType === 'pie',
               position: 'bottom',
-              labels: { color: '#334155', font: { size: 12 } }
+              labels: { color: '#334155', font: { size: 11 } }
             }
           },
           scales: scalesConfig
@@ -426,21 +504,20 @@
       });
     }
 
-    // グラフ画面用のインタラクティブテーブル生成（直接入力＆即時反映）
     function syncInteractiveTable(labels, data, xLabel, yLabel) {
       const container = document.getElementById('graphPageTable');
       
       let html = `
-        <table class="w-full text-sm border-collapse border border-slate-300 min-w-[500px]">
+        <table class="w-full text-xs border-collapse border border-slate-300 min-w-[320px]">
           <thead>
             <tr class="bg-slate-100 text-slate-800">
-              <th class="border border-slate-300 p-2 font-bold w-28 bg-slate-200">${xLabel || '項目'}</th>
+              <th class="border border-slate-300 px-1 py-1 font-bold w-20 bg-slate-200 text-center">${xLabel || '項目'}</th>
       `;
       
       labels.forEach((l, idx) => {
         html += `
-          <th class="border border-slate-300 p-1 font-bold text-center">
-            <input type="text" data-index="${idx}" class="sync-label w-full px-1.5 py-1 border border-transparent hover:border-slate-300 focus:border-indigo-500 rounded text-center bg-transparent font-bold" value="${l}">
+          <th class="border border-slate-300 p-0.5 font-bold text-center">
+            <input type="text" data-index="${idx}" class="sync-label w-full px-1 py-0.5 border border-transparent hover:border-slate-300 focus:border-indigo-500 rounded text-center bg-transparent font-bold" value="${l}">
           </th>
         `;
       });
@@ -450,13 +527,13 @@
           </thead>
           <tbody>
             <tr>
-              <th class="border border-slate-300 p-2 font-bold bg-slate-100 text-slate-700">${yLabel || '数値'}</th>
+              <th class="border border-slate-300 px-1 py-1 font-bold bg-slate-100 text-slate-700 text-center">${yLabel || '数値'}</th>
       `;
 
-      data.forEach((d, idx) => {
+      data.forEach((v, idx) => {
         html += `
-          <td class="border border-slate-300 p-1 text-center">
-            <input type="number" data-index="${idx}" class="sync-val w-full px-1.5 py-1 border border-slate-200 focus:border-indigo-500 rounded text-center font-bold text-indigo-700 bg-white" value="${d}">
+          <td class="border border-slate-300 p-0.5 text-center">
+            <input type="number" data-index="${idx}" class="sync-val w-full px-1 py-0.5 border border-transparent hover:border-slate-300 focus:border-indigo-500 rounded text-center" value="${v}">
           </td>
         `;
       });
@@ -469,130 +546,164 @@
 
       container.innerHTML = html;
 
-      // グラフ画面内での入力イベントをページ1の元の入力フィールドへ同期
       container.querySelectorAll('.sync-label').forEach(input => {
-        input.addEventListener('input', (e) => {
+        input.addEventListener('change', (e) => {
           const idx = e.target.getAttribute('data-index');
-          const targetInputs = document.querySelectorAll('.input-label');
-          if (targetInputs[idx]) {
-            targetInputs[idx].value = e.target.value;
+          const mainInputs = document.querySelectorAll('.input-label');
+          if (mainInputs[idx]) {
+            mainInputs[idx].value = e.target.value;
             renderGraph();
           }
         });
       });
 
       container.querySelectorAll('.sync-val').forEach(input => {
-        input.addEventListener('input', (e) => {
+        input.addEventListener('change', (e) => {
           const idx = e.target.getAttribute('data-index');
-          const targetInputs = document.querySelectorAll('.input-val');
-          if (targetInputs[idx]) {
-            targetInputs[idx].value = e.target.value;
+          const mainInputs = document.querySelectorAll('.input-val');
+          if (mainInputs[idx]) {
+            mainInputs[idx].value = e.target.value;
             renderGraph();
           }
         });
       });
     }
 
-    // 共有モーダルの操作
-    function openShareModal() {
-      document.getElementById('shareModal').classList.remove('hidden');
-      document.getElementById('copySuccessMsg').classList.add('hidden');
-    }
-
-    function closeShareModal() {
-      document.getElementById('shareModal').classList.add('hidden');
-    }
-
-    // データ状態をURLパラメータにエンコードしてクリップボードに保存
-    function generateShareUrl() {
-      const shareMode = document.querySelector('input[name="shareMode"]:checked').value;
-
-      const labels = [];
+    function getCurrentConfig() {
       const data = [];
-      document.querySelectorAll('.input-label').forEach(i => labels.push(i.value));
-      document.querySelectorAll('.input-val').forEach(i => data.push(i.value));
+      const labelInputs = document.querySelectorAll('.input-label');
+      const valInputs = document.querySelectorAll('.input-val');
 
-      const payload = {
+      labelInputs.forEach((input, index) => {
+        data.push({
+          label: input.value || `項目${index + 1}`,
+          val: parseFloat(valInputs[index].value) || 0
+        });
+      });
+
+      return {
         title: document.getElementById('graphTitle').value,
         xLabel: document.getElementById('xAxisLabel').value,
         yLabel: document.getElementById('yAxisLabel').value,
-        yUnit: document.getElementById('yAxisUnit').value,
-        chartType: document.getElementById('chartType').value,
+        unit: document.getElementById('yAxisUnit').value,
+        type: document.getElementById('chartType').value,
         yMin: document.getElementById('yMin').value,
         yMax: document.getElementById('yMax').value,
-        labels: labels,
+        yStep: document.getElementById('yStep').value,
         data: data
       };
-
-      // JSON文字列化してBase64エンコード
-      const jsonStr = JSON.stringify(payload);
-      const encodedData = encodeURIComponent(btoa(unescape(encodeURIComponent(jsonStr))));
-
-      const baseUrl = window.location.href.split('?')[0];
-      const shareUrl = `${baseUrl}?mode=${shareMode}&data=${encodedData}`;
-
-      // クリップボードへのコピー実行
-      copyToClipboard(shareUrl);
-
-      document.getElementById('copySuccessMsg').classList.remove('hidden');
     }
 
-    // クリップボードコピー処理 (iFrame制限対応)
-    function copyToClipboard(text) {
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text);
-      } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed";
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-          document.execCommand('copy');
-        } catch (err) {
-          console.error('Copy failed', err);
-        }
-        document.body.removeChild(textArea);
+    // 自作の保存データリスト（メモリ内）
+    const mySavedPresets = {};
+
+    // プリセット読み込み
+    function loadPreset(key) {
+      if (mySavedPresets[key]) {
+        applyConfig(mySavedPresets[key]);
+        return;
       }
+      const p = presets[key];
+      if (!p) return;
+      applyConfig(p);
     }
 
-    // URLからデータを復元
-    function loadDataFromUrl(urlParams) {
+    // 名前を付けて保存（ブラウザ内保存）
+    function saveCurrentGraphInMemory() {
+      const nameInput = document.getElementById('saveNameInput');
+      const name = nameInput.value.trim() || `マイデータ ${Object.keys(mySavedPresets).length + 1}`;
+      
+      const config = getCurrentConfig();
+      config.title = config.title || name;
+      
+      const key = `custom_${Date.now()}`;
+      mySavedPresets[key] = config;
+
+      // プリセットセレクトボックスの「マイ保存グラフ」グループに追加
+      const group = document.getElementById('savedPresetsGroup');
+      group.classList.remove('hidden');
+
+      const option = document.createElement('option');
+      option.value = key;
+      option.textContent = `★ ${name}`;
+      group.appendChild(option);
+
+      document.getElementById('presetSelect').value = key;
+      nameInput.value = '';
+
+      showToast(`「${name}」を保存しました！`);
+    }
+
+    // 配布用リンク作成
+    function copyShareLink() {
+      const config = getCurrentConfig();
+      const modeEl = document.querySelector('input[name="shareMode"]:checked');
+      const shareMode = modeEl ? modeEl.value : 'graph';
+
+      const jsonStr = JSON.stringify(config);
+      const encoded = encodeURIComponent(jsonStr);
+      
+      const baseUrl = window.location.href.split('#')[0];
+      const shareUrl = `${baseUrl}#mode=${shareMode}&data=${encoded}`;
+
+      // クリップボードにコピー
+      const tempInput = document.createElement('input');
+      tempInput.value = shareUrl;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+
+      showToast('配布用リンクをコピーしました！');
+    }
+
+    // URLハッシュからの復元
+    function loadFromHash() {
+      const hash = window.location.hash;
+      if (!hash || (!hash.includes('data=') && !hash.includes('mode='))) return false;
+
       try {
-        const rawData = urlParams.get('data');
-        if (!rawData) return;
+        let mode = 'graph';
+        let jsonStr = '';
 
-        const jsonStr = decodeURIComponent(escape(atob(decodeURIComponent(rawData))));
-        const payload = JSON.parse(jsonStr);
+        const params = hash.replace('#', '').split('&');
+        params.forEach(param => {
+          if (param.startsWith('mode=')) {
+            mode = param.replace('mode=', '');
+          } else if (param.startsWith('data=')) {
+            jsonStr = decodeURIComponent(param.replace('data=', ''));
+          }
+        });
 
-        if (payload.title !== undefined) document.getElementById('graphTitle').value = payload.title;
-        if (payload.xLabel !== undefined) document.getElementById('xAxisLabel').value = payload.xLabel;
-        if (payload.yLabel !== undefined) document.getElementById('yAxisLabel').value = payload.yLabel;
-        if (payload.yUnit !== undefined) document.getElementById('yAxisUnit').value = payload.yUnit;
-        if (payload.chartType !== undefined) document.getElementById('chartType').value = payload.chartType;
-        if (payload.yMin !== undefined) document.getElementById('yMin').value = payload.yMin;
-        if (payload.yMax !== undefined) document.getElementById('yMax').value = payload.yMax;
-
-        if (payload.labels && payload.data) {
-          const tbody = document.getElementById('dataTableBody');
-          tbody.innerHTML = '';
-          payload.labels.forEach((label, idx) => {
-            const val = payload.data[idx] !== undefined ? payload.data[idx] : 0;
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td class="text-center font-bold text-slate-400 p-2">${idx + 1}</td>
-              <td class="p-1.5"><input type="text" class="input-label w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="${label}"></td>
-              <td class="p-1.5"><input type="number" class="input-val w-full px-2 py-1.5 border rounded focus:ring-1 focus:ring-indigo-500" value="${val}"></td>
-            `;
-            tbody.appendChild(tr);
-          });
-          bindInputEvents();
+        if (jsonStr) {
+          const config = JSON.parse(jsonStr);
+          applyConfig(config);
         }
+
+        // 共有モードに応じた初期表示タブの設定
+        if (mode === 'graph') {
+          switchTab('graph');
+        } else {
+          switchTab('input');
+        }
+        return true;
       } catch (e) {
-        console.error("データの読み込みに失敗しました", e);
+        console.error('Failed to load config from hash:', e);
+        return false;
       }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2500);
     }
   </script>
 </body>
 </html>
+

@@ -93,11 +93,11 @@
             <span class="font-bold">配布用リンクを作る（先生用）</span><br>
             <span class="text-xs text-slate-500">「設定」タブの一番下から、生徒に配るリンクを作ってコピーできます。</span>
           </li>
+          <li>
+            <span class="font-bold">新しくグラフを作りたいとき</span><br>
+            <span class="text-xs text-slate-500">プリセットから「からっぽ（自分でつくる）」を選ぶと、まっさらな状態から自由にグラフを作れます。</span>
+          </li>
         </ol>
-
-        <p class="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          「今後は表示しない」を選んだ場合の設定は、GitHub Pagesで公開した状態でのみ保存されます（このプレビュー画面では保存されません）。
-        </p>
 
         <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
           <input type="checkbox" id="dontShowAgainCheckbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
@@ -560,8 +560,9 @@
         else step = Math.pow(10, Math.floor(Math.log10(range))) || 1;
       }
 
-      const computedMin = yMinInput !== '' ? parseFloat(yMinInput) : Math.min(0, Math.floor(dataMin - step));
-      const computedMax = yMaxInput !== '' ? parseFloat(yMaxInput) : Math.ceil(dataMax + step);
+      // 最小値: データがすべて0以上のときは0から始める（「からっぽ」プリセットなど全データ0の場合も含む）
+      const computedMin = yMinInput !== '' ? parseFloat(yMinInput) : (dataMin >= 0 ? 0 : Math.floor(dataMin - step));
+      const computedMax = yMaxInput !== '' ? parseFloat(yMaxInput) : Math.ceil(Math.max(dataMax + step, computedMin + step));
 
       const chartCanvas = document.getElementById('myChart');
       if (!chartCanvas) return;
